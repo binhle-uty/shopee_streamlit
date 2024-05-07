@@ -5,5 +5,5 @@ python-dotenv
 plotly
 streamlit-aggrid
 supabase
-psycopg2
+psycopg2-binary
 seaborn
