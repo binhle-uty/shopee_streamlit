@@ -1,0 +1,42 @@
+[data]
+[data.shopee]
+path = "https://docs.google.com/spreadsheets/d/1YRkMQa2NeaCAJ7mWxs4-BiyssgJFVayP93WUsHB60Hs/edit#gid=2101033930"
+local_path = "./data/After_analysis.csv"
+
+[supabase]
+[supabase.table]
+table_name = "product_shopee_monthly"
+table_features = ['time_period',
+'product_name',
+'product_id',
+'top_level_category',
+'second_level_category',
+'third_level_category',
+'fourth_level_category',
+'fifth_level_category',
+'avg_sku_price_vnd',
+'brand',
+'shop_name',
+'sold_per_day',
+'revenue_per_day_vnd',
+'sold_per_month',
+'product_sales_rate',
+'price_vnd',
+'brand_id',
+'product_link',
+'total_sold',
+'seller_origin',
+'image_link',
+'monthly_revenue_vnd',
+'shop_id',
+'sku',
+'listing_date',
+'monthly_revenue_fig',
+'new_ratings',
+'ratings_rate',
+'likes',
+'rating_star',
+'new_likes',
+'total_ratings',
+'category',
+'sub_category',]
