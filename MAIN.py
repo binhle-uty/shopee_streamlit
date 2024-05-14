@@ -9,8 +9,6 @@ import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 pd.options.plotting.backend = "plotly"
 import numpy as np
-from src.clustering import TextClustering
-import texthero as hero
 from src.utils import calculate_trend
 
 load_dotenv()
