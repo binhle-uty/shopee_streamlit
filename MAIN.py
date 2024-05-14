@@ -117,12 +117,6 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
         negative_term = st.text_input("Từ khóa loại bỏ:")
     
     negative_term = negative_term.lower()
-    if "+" in negative_term:
-        list_negative_term = negative_term.split("+")
-    else:
-        list_negative_term = [negative_term]
-
-
 
     list_term = [x.strip() for x in list_term]
     list_negative_term = [x.strip() for x in list_negative_term] 
@@ -142,7 +136,12 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
         for x in list_term:
             filter_data_term = filter_data_term.loc[(filter_data_term["product_name"].str.contains(x))]#&(filter_data["sub_category"].str.contains(term))]
         
-        if len(list_negative_term)>0:
+        if negative_term != "":
+            if "+" in negative_term:
+                list_negative_term = negative_term.split("+")
+            else:
+                list_negative_term = [negative_term]
+
             for x in list_negative_term:
                 filter_data_term = filter_data_term.loc[~(filter_data_term["product_name"].str.contains(x, case=False))]
 
