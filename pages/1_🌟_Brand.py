@@ -227,7 +227,7 @@ def plot_save_brand(data, raw_data):
     st.subheader("Lưu thông tin Brand", divider='red')
 
     list_brand = data["brand"].unique().tolist()
-    category = data["category"].unique().tolist()[0]
+    category = data["category"].unique().tolist()
     get_dict_selected = st.session_state["selected_brand"]
     # st.write(get_dict_selected)
     list_selected = [x["chose_brand"] for x in get_dict_selected if x["category"] == category]
@@ -334,7 +334,7 @@ def page():
         st.subheader("Chọn Category:")
         selected_cat = st.selectbox("---", options=category,label_visibility="hidden")
 
-        selected_df = df_filter.loc[df_filter["category"]==str([selected_cat])]
+        selected_df = df_filter.loc[df_filter["category"].str.lower()==str(selected_cat.lower())]
         # show_data(selected_df)
         
         col1, col2, col3 = st.columns([1,1, 1])

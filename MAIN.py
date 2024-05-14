@@ -1,20 +1,17 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import ast
 import toml
-import os
-import json
-from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
-import time
 
 from src.supabase import SupabaseConnect
 
-import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
 pd.options.plotting.backend = "plotly"
+import numpy as np
+from src.clustering import TextClustering
+import texthero as hero
+from src.utils import calculate_trend
 
 load_dotenv()
 config_file = toml.load("config.toml")
@@ -61,9 +58,6 @@ def load_data():
     table = get_data_from_supabase()
     table = modify_data(table)
     table = preprocess_data(table)
-    # t = st.success(f"Completed loading data!")
-    # time.sleep(1)
-    # t.empty()
     return table
 
 
@@ -108,17 +102,32 @@ def show_data(data):
             hide_index=True,
             num_rows="fixed",
         )
-    
-def handle_term(term):
-    if "+" in term:
-        list_term = term.split("+")
-    if "|" in term:
-        list_term = term.split("|")
-
-    
 
 def analysis_data_by_term(filter_data: pd.DataFrame):
-    term = st.text_input("Từ khóa tìm kiếm: ")
+
+    col1, col2 = st.columns([0.5, 0.5])
+    with col1:
+        term = st.text_input("Từ khóa tìm kiếm: ")
+
+    term = term.lower()
+    if "+" in term:
+        list_term = term.split("+")
+    else:
+        list_term = [term]
+
+    with col2:
+        negative_term = st.text_input("Từ khóa loại bỏ:")
+    
+    negative_term = negative_term.lower()
+    if "+" in negative_term:
+        list_negative_term = negative_term.split("+")
+    else:
+        list_negative_term = [negative_term]
+
+
+
+    list_term = [x.strip() for x in list_term]
+    list_negative_term = [x.strip() for x in list_negative_term] 
 
     dict_features = {
         "tổng doanh thu theo tháng": "monthly_revenue_vnd",
@@ -129,18 +138,25 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
         filter_data["product_name"] = filter_data["product_name"].str.lower()
         filter_data["sub_category"] = filter_data["sub_category"].str.lower()
 
-        on = st.sidebar.toggle("Phân tích theo Category")
+        on = st.sidebar.toggle("Phân tích theo Brand")
 
-        filter_data_term = filter_data.loc[(filter_data["product_name"].str.contains(term))]#&(filter_data["sub_category"].str.contains(term))]
+        filter_data_term = filter_data.copy()
+        for x in list_term:
+            filter_data_term = filter_data_term.loc[(filter_data_term["product_name"].str.contains(x))]#&(filter_data["sub_category"].str.contains(term))]
         
+        if len(list_negative_term)>0:
+            for x in list_negative_term:
+                filter_data_term = filter_data_term.loc[~(filter_data_term["product_name"].str.contains(x, case=False))]
+
         options = st.radio("Chọn cột phân tích", dict_features.keys(), horizontal=True)
 
         if on:
-            groupdf_sum = filter_data_term.groupby(["category","time_period"])[dict_features[options]].agg("sum").reset_index()
+            groupdf_sum = filter_data_term.groupby(["brand","time_period"])[dict_features[options]].agg("sum").reset_index()
         else:
             groupdf_sum = filter_data_term.groupby(["time_period"])[dict_features[options]].agg("sum").reset_index()  
-
+        
         groupdf_count = filter_data_term.groupby(["time_period"])[dict_features[options]].agg("count").reset_index()
+        # groupdf_count = filter_data_term.groupby(["time_period"])[dict_features[options]].agg("count").reset_index()
         # Create figure with secondary y-axis
         fig = make_subplots(specs=[[{"secondary_y": True}]])    
 
@@ -155,17 +171,19 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
                         )
         # fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
         if on:
-            for each in groupdf_sum["category"].unique():
-                get_data = groupdf_sum[groupdf_sum["category"]==each]
-                fig.add_trace(go.Scatter(x=get_data.time_period, y=get_data[dict_features[options]].values,
+            for each in groupdf_sum["brand"].unique():
+                get_data = groupdf_sum[groupdf_sum["brand"]==each]
+                x = list(get_data.time_period.values)
+                y = list(get_data[dict_features[options]].values)
+                fig.add_trace(go.Scatter(x=x, y=y,
                                             line=dict(shape='linear'),
                                             connectgaps=True,
-                                            # marker=dict(color='rgb(255, 0, 0)'),
                                             name=f'{each}',
                                             mode='lines+markers',
                                             ),
                                             secondary_y=True,
                                 )
+                        
         else:
             fig.add_trace(go.Scatter(x=groupdf_sum.time_period, y=groupdf_sum[dict_features[options]].values,
                                             line=dict(shape='linear'),
@@ -184,25 +202,85 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
         show_data(groupdf_sum.T)
         st.plotly_chart(fig)
         
-        show_data(filter_data_term[selected_columns])
+        final_df = filter_data_term[selected_columns]
+        # seq  = [False]*len(final_df)
+        # final_df.insert(0, '', seq)
+        show_data(final_df)
+
+
+def trend_value(nums: list):
+    summed_nums = sum(nums)
+    multiplied_data = 0
+    summed_index = 0 
+    squared_index = 0
+
+    for index, num in enumerate(nums):
+        index += 1
+        multiplied_data += index * num
+        summed_index += index
+        squared_index += index**2
+
+    numerator = (len(nums) * multiplied_data) - (summed_nums * summed_index)
+    denominator = (len(nums) * squared_index) - summed_index**2
+    if denominator != 0:
+        return numerator/denominator
+    else:
+        return 0
+    
+
+# @st.cache_data
+# def cluster_data(filter_data):
+#     # tfidf = hero.tfidf(hero.clean(filter_data['product_name'].str.lower()),max_features=500)
+#     # filter_data['cluster_label'] = hero.dbscan(tfidf, eps=0.05, min_samples=5)
+#     list_sub_cat = filter_data['sub_category'].unique()
+#     tc = TextClustering(list_sub_cat)
+#     mapping = tc.main_flow()
+#     st.write(mapping)
+#     st.write(filter_data['sub_category'])
+#     filter_data['cluster_label']=  filter_data['sub_category'].apply(lambda x: mapping[x.lower()])
+
+#     return filter_data
+@st.cache_data
+def get_trend(filter_data):
+    list_cluster = filter_data['sub_category'].unique().tolist()
+    filter_data["trend"] = [0]*len(filter_data)
+    
+    for each_cluster  in list_cluster:
+        get_data = filter_data.loc[filter_data['sub_category'] == each_cluster]
+        indices = get_data.index
+
+        groupdf_sum = get_data.groupby(["time_period"])["sold_per_month"].agg("sum").reset_index()
+        if max(groupdf_sum['time_period']) < max(filter_data["time_period"]):
+            average = 0
+        else:
+            average, max_trend, min_trend, overall_trend, extermum_list_x, extermum_list_y = calculate_trend(groupdf_sum["sold_per_month"].values)
+        filter_data.loc[indices, "trend"] = average
+    return filter_data
 
 if __name__ == '__main__':
+    for_developer = False
     set_page_info()
-    
     data = load_data()
-    list_date_range = [x for x in data["time_period"].unique().tolist() if x is not None]
-    list_date_range.sort()
-    start_value, end_value = len(list_date_range)-2,len(list_date_range)-1
-    selection = load_slider('Chọn khoảng thời gian phân tích', 
-                list_date_range =  list_date_range,
-                selected=(start_value, end_value), 
-                )
-    if selection[0] == selection[1]:
-        filter_data = data.loc[(data["time_period"] == list_date_range[selection[0]]),:] 
-    else:
-        filter_data = data.loc[(data["time_period"] >= list_date_range[selection[0]]) & (data["time_period"] <= list_date_range[selection[1]]),:] 
+    # list_date_range = [x for x in data["time_period"].unique().tolist() if x is not None]
+    # list_date_range.sort()
+    # start_value, end_value = len(list_date_range)-2,len(list_date_range)-1
+    # selection = load_slider('Chọn khoảng thời gian phân tích', 
+    #             list_date_range =  list_date_range,
+    #             selected=(start_value, end_value), 
+    #             )
+    # if selection[0] == selection[1]:
+    #     filter_data = data.loc[(data["time_period"] == list_date_range[selection[0]]),:] 
+    # else:
+    #     filter_data = data.loc[(data["time_period"] >= list_date_range[selection[0]]) & (data["time_period"] <= list_date_range[selection[1]]),:] 
+    filter_data = data.copy()
     if "df_data" not in st.session_state:
         st.session_state.df_data  = data
+
+    # filter_data = cluster_data(filter_data)
+    filter_data = get_trend(filter_data)
+    if for_developer == True:
+        st.write(filter_data)
+    
 
     analysis_data_by_term(filter_data)
     

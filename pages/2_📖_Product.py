@@ -345,7 +345,7 @@ def page():
         st.subheader("Chọn Category:")
         selected_cat = st.selectbox("---", options=category,label_visibility="hidden")
 
-        selected_df = df_filter.loc[df_filter["category"]==str([selected_cat])]
+        selected_df = df_filter.loc[df_filter["category"].str.lower()==str(selected_cat.lower())]
         # show_data(selected_df)
         
         # col1, col2, col3 = st.columns([1,1, 1])
