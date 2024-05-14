@@ -119,7 +119,6 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
     negative_term = negative_term.lower()
 
     list_term = [x.strip() for x in list_term]
-    list_negative_term = [x.strip() for x in list_negative_term] 
 
     dict_features = {
         "tổng doanh thu theo tháng": "monthly_revenue_vnd",
@@ -141,7 +140,7 @@ def analysis_data_by_term(filter_data: pd.DataFrame):
                 list_negative_term = negative_term.split("+")
             else:
                 list_negative_term = [negative_term]
-
+            list_negative_term = [x.strip() for x in list_negative_term] 
             for x in list_negative_term:
                 filter_data_term = filter_data_term.loc[~(filter_data_term["product_name"].str.contains(x, case=False))]
 
